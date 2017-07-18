@@ -1,8 +1,11 @@
 import React from 'react'
 
-const ArrayInterface = ({arr}) => (
+const ArrayInterface = ({handleChange}) => (
   <div>
-    [ {arr} ]
+    <h3 style={{color: '#BBB'}}>Provide a whitespace separated array</h3>
+    <form>
+      <h3 style={{color: '#BBB'}}>[ <input type="text" name="userArrayInput" onChange={handleChange}/> ]</h3>
+    </form>
   </div>
 )
 
