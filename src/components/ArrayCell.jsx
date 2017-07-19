@@ -2,7 +2,7 @@ import React from 'react'
 
 function getDisplayData(val) {
   if (typeof val === 'string') return ['user-cell', val]
-  return (val === 0) ? ['lowered-cell', null] : ['raised-cell', null]
+  return (val === null) ? ['lowered-cell', null] : ['raised-cell', null]
 }
 
 const ArrayCell = ({val}) => {

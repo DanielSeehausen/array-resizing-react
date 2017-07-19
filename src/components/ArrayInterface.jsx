@@ -1,97 +1,65 @@
 import React, { Component } from 'react'
 import UserInput from './UserInput'
-import Matrix from './Matrix'
+import VisualMatrix from './VisualMatrix'
 import screenShake from '../helpers/screenShake'
 import playAudio from '../helpers/audioPlayer.js'
-
-let defMatrix = [
-  [0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-  [1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0],
-  [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1],
-  [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
-  [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1],
-  [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-]
-
-let longestContiguousArrSize = () => {
-  let longestFound = -1
-  for (let row = 0; row < defMatrix.length; row++) {
-    let currLength = 0
-    for (let col = 0; col < defMatrix[0].length; col++) {
-      currLength = (defMatrix[row][col] === 0) ? currLength+1 : 0
-      currLength > longestFound && (longestFound = currLength)
-    }
-  }
-  return longestFound
-}
+import Matrix from '../helpers/Matrix.js'
 
 //TODO use lock to prevent users from adding when they shouldn't
 
 class ArrayInterface extends Component {
   constructor() {
     super()
+    this.matrix = new Matrix()
     this.state = {
-      mat: defMatrix.map(arr => arr.slice()),
-      currLength: 0, // now using currArr so don't really need this
+      matVals: this.matrix.matVals,
       currArr: [],
-      currStartPos: 0,
+      currStartPos: [0, 0],
     }
-    this.maxArrSize = longestContiguousArrSize()
+    this.maxArrLength = this.matrix.longestContiguousFreeSpace()
   }
 
   shakeScreen = () => { screenShake(this.container) }
 
-  resetMatrix = () => {
+  resetInterface = () => {
+    this.matrix.resetToDefault()
     this.setState({
-      mat: defMatrix.map(arr => arr.slice()),
-      currLength: 0,
+      matVals: this.matrix.matVals,
       currArr: [],
-      currStartPos: 0
+      currStartPos: [0, 0]
     })
     playAudio()
   }
 
   getValidArr = (str) => {
-    let arr = str.replace(/ /g, '').split('')
-    if (arr[arr.length-1] === '')
-      arr.pop()
-    return (arr.length === 0) ? false : arr
+    return str.replace(/ /g, '').split('')
   }
 
-  getStartPos = (arrLength) => {
-    let remaining = arrLength
-    for (let row = 0; row < this.state.mat.length; row++) {
-      for (let col = 0; col < this.state.mat[0].length; col++) {
-        remaining = (this.state.mat[row][col] === 1) ? arrLength : --remaining
-        if (remaining === 0) return [row, col - arrLength + 1]
-      }
-    }
-    return false
-  }
-
-  moveElement = (mat, pos, val, delay, shouldShake) => {
-    if (shouldShake) {
-      setTimeout(() => {
-        mat[pos[0]][pos[1]] = val
-        playAudio()
-        this.shakeScreen()
-        this.setState({mat})
-      }, delay * 200)
-    } else {
-      mat[pos[0]][pos[1]] = val
+  expensiveWrite = (pos, val, iterCount, shouldShake) => {
+    setTimeout(() => {
+      this.matrix.setValue(pos, val)
       playAudio()
-      this.setState({mat})
-    }
+      this.shakeScreen()
+      this.setState({ matVals: this.matrix.matVals })
+    }, iterCount * 200)
   }
 
-  setMatrix = (arr, startPos, shakeAfter) => {
-    let mat = defMatrix.map(arr => arr.slice())
-    for (let col = startPos[1], count = 0; col < arr.length+startPos[1]; col++, count++) {
-      let shouldShake = count > shakeAfter
-      let delay = shouldShake ? count - shakeAfter - 1 : null
-      this.moveElement(mat, [startPos[0], col], arr[col - startPos[1]], delay, shouldShake)
+  normalWrite = (pos, val, iterCount, shouldShake) => {
+    this.matrix.setValue(pos, val)
+    playAudio()
+    this.setState({ matVals: this.matrix.matVals })
+  }
+
+  writeElement = (pos, val, iterCount, shouldShake) => {
+    const writeType = (shouldShake) ? this.expensiveWrite : this.normalWrite
+    writeType(pos, val, iterCount, shouldShake)
+  }
+
+  writeMatrix = (userArr, startPos, shakeAfter) => {
+    this.matrix.resetToDefault()
+    for (let col = startPos[1], idx = 0; col < userArr.length+startPos[1]; col++, idx++) {
+      let shouldShake = idx > shakeAfter
+      this.writeElement([startPos[0], col], userArr[idx], idx, shouldShake)
     }
   }
 
@@ -108,36 +76,33 @@ class ArrayInterface extends Component {
     return true
   }
 
-  // fix this please
+  // Implement a lock!
   updateMatrix = (arr) => {
-    let startPos = (arr.length <= this.state.currLength) ? this.state.currStartPos : this.getStartPos(arr.length)
-    let difference = arr.length - this.state.currLength
-    var shakeAfter = Number.POSITIVE_INFINITY
-    if (!this.coordSame(startPos, this.state.currStartPos)) {
-      shakeAfter = -1
-    } else if (difference > 0) {
-      shakeAfter = arr.length - difference
+    if (arr.length === 0) {
+      if (this.state.currStartPos !== 0)
+        this.resetInterface()
+      return
     }
+    const difference = arr.length - this.state.currArr.length
+    console.log(this.state.currStartPos, arr.length)
+    const startPos = this.matrix.getStartPos(arr.length, this.state.currStartPos)
+    console.log(startPos)
+    const shakeAfter = this.coordSame(startPos, this.state.currStartPos) ? (arr.length - difference) : -1
+    // instead of reverting to default could keep track of what was written and erase it only instead
+    this.writeMatrix(arr, startPos, shakeAfter)
     this.setState({
       currLength: arr.length,
-      currStartPos: startPos
+      currStartPos: startPos,
+      currArr: arr
     })
-    this.setMatrix(arr, startPos, shakeAfter)
   }
 
+  updateRequired = (arr) => (arr.length <= this.maxArrLength && !this.arrEquals(arr, this.state.currArr))
+
   handleChange = (e) => {
-    let arr = this.getValidArr(e.target.value)
-    this.setState({currLength: arr.length})
-    if (arr.length > this.maxArrSize || this.arrEquals(arr, this.state.currArr)) {
-      return
-    } else if (arr) {
-      this.updateMatrix(arr)
-    } else {
-      this.resetMatrix()
-    }
-    if (!arr)
-      arr = []
-    this.setState({currArr: arr})
+    const sanitizedArr = this.getValidArr(e.target.value)
+    if (this.updateRequired(sanitizedArr))
+      this.updateMatrix(sanitizedArr)
   }
 
   render() {
@@ -148,7 +113,7 @@ class ArrayInterface extends Component {
           <UserInput handleChange={this.handleChange} val={this.state.currArr.join(' ')}/>
         </div>
         <div ref={(container) => this.container = container} style={{height: '80%', minWidth: '600px', width: '100%', margin: '0 auto', top: '25%', position: 'absolute'}}>
-          <Matrix mat={this.state.mat} parentStruc={'Array'}/>
+          <VisualMatrix matVals={this.matrix.matVals} parentStruc={'Array'}/>
         </div>
       </div>
     )
