@@ -1,5 +1,0 @@
-const audio = new Audio('../assets/audio-clips/typewriter.wav')
-
-export default function playAudio() {
-  audio.play()
-}

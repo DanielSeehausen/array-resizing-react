@@ -1,17 +1,18 @@
 import React, { Component } from 'react'
-import ArrayInterface from './ArrayInterface'
+import UserInput from './UserInput'
 import Matrix from './Matrix'
-import Row from './Row'
-import Cell from './Cell'
 import screenShake from '../helpers/screenShake'
-import playAudio from '../helpers/audioPlayer'
+import playAudio from '../helpers/audioPlayer.js'
 
 let defMatrix = [
-  [0, 0, 1, 1, 0, 0, 0, 0],
-  [1, 1, 1, 1, 0, 1, 1, 0],
-  [1, 0, 0, 0, 0, 0, 1, 1],
-  [1, 1, 0, 1, 1, 1, 1, 1],
-  [0, 0, 0, 0, 0, 0, 0, 1]
+  [0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+  [1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0],
+  [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1],
+  [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
+  [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1],
+  [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
 ]
 
 let longestContiguousArrSize = () => {
@@ -26,12 +27,13 @@ let longestContiguousArrSize = () => {
   return longestFound
 }
 
-class MatrixContainer extends Component {
+class ListInterface extends Component {
   constructor() {
     super()
     this.state = {
       mat: defMatrix.map(arr => arr.slice()),
-      currLength: 0,
+      currLength: 0, // now using currArr so don't really need this
+      currArr: [],
       currStartPos: 0,
     }
     this.maxArrSize = longestContiguousArrSize()
@@ -43,12 +45,14 @@ class MatrixContainer extends Component {
     this.setState({
       mat: defMatrix.map(arr => arr.slice()),
       currLength: 0,
+      currArr: [],
       currStartPos: 0
     })
+    playAudio()
   }
 
   getValidArr = (str) => {
-    let arr = str.split(/\s+/)
+    let arr = str.replace(/ /g, '').split('')
     if (arr[arr.length-1] === '')
       arr.pop()
     return (arr.length === 0) ? false : arr
@@ -72,9 +76,10 @@ class MatrixContainer extends Component {
         playAudio()
         this.shakeScreen()
         this.setState({mat})
-      }, delay * 250)
+      }, delay * 200)
     } else {
       mat[pos[0]][pos[1]] = val
+      playAudio()
       this.setState({mat})
     }
   }
@@ -83,7 +88,6 @@ class MatrixContainer extends Component {
     let mat = defMatrix.map(arr => arr.slice())
     for (let col = startPos[1], count = 0; col < arr.length+startPos[1]; col++, count++) {
       let shouldShake = count > shakeAfter
-      console.log(count, shakeAfter, shouldShake)
       let delay = shouldShake ? count - shakeAfter - 1 : null
       this.moveElement(mat, [startPos[0], col], arr[col - startPos[1]], delay, shouldShake)
     }
@@ -93,9 +97,18 @@ class MatrixContainer extends Component {
     return (posA[0] === posB[0] && posA[1] === posB[1]) ? true : false
   }
 
+  arrEquals = (arrA, arrB) => {
+    if (arrA.length !== arrB.length) return false
+    for (let i = 0; i < arrA.length; i++) {
+      if (arrA[i] !== arrB[i])
+        return false
+    }
+    return true
+  }
+
   // fix this please
   updateMatrix = (arr) => {
-    let startPos = this.getStartPos(arr.length)
+    let startPos = (arr.length <= this.state.currLength) ? this.state.currStartPos : this.getStartPos(arr.length)
     let difference = arr.length - this.state.currLength
     var shakeAfter = Number.POSITIVE_INFINITY
     if (!this.coordSame(startPos, this.state.currStartPos)) {
@@ -113,13 +126,16 @@ class MatrixContainer extends Component {
   handleChange = (e) => {
     let arr = this.getValidArr(e.target.value)
     this.setState({currLength: arr.length})
-    if (arr.length > this.maxArrSize) {
+    if (arr.length > this.maxArrSize || this.arrEquals(arr, this.state.currArr)) {
       return
     } else if (arr) {
       this.updateMatrix(arr)
     } else {
       this.resetMatrix()
     }
+    if (!arr)
+      arr = []
+    this.setState({currArr: arr})
   }
 
   render() {
@@ -127,14 +143,14 @@ class MatrixContainer extends Component {
       <div>
         {(this.state.currLength > this.maxArrSize ) ? <div style={{color: '#FF0000', width: '100%', margin: '0 auto', position: 'absolute', top: '7%'}}>Array Too Large!</div> : null}
         <div style={{height: '15%', width: '100%', margin: '0 auto', top: '10%', position: 'absolute'}}>
-          <ArrayInterface handleChange={this.handleChange}/>
+          <UserInput handleChange={this.handleChange} val={this.state.currArr.join(' ')}/>
         </div>
-        <div ref={(container) => this.container = container} style={{height: '80%', width: '100%', margin: '0 auto', top: '25%', position: 'absolute'}}>
-          <Matrix mat={this.state.mat} />
+        <div ref={(container) => this.container = container} style={{height: '80%', minWidth: '600px', width: '100%', margin: '0 auto', top: '25%', position: 'absolute'}}>
+          <Matrix mat={this.state.mat} parentStruc={'List'}/>
         </div>
       </div>
     )
   }
 }
 
-export default MatrixContainer
+export default ListInterface

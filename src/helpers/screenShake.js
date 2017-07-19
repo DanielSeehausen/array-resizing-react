@@ -5,7 +5,7 @@ function getRandom(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function screenShake(el) {
+export default function(el) {
   const x = getRandom(min, max)
   const y = getRandom(min, max)
   const xDir = Math.random() > 0.5 ? -1 : 1
@@ -21,4 +21,4 @@ function screenShake(el) {
 
 }
 
-export default screenShake
+// export default screenShake
