@@ -23,7 +23,7 @@ class App extends Component {
           <InterfaceSelector handleChange={this.swapMode} structName={'Array'}/>
           <InterfaceSelector handleChange={this.swapMode} structName={'LinkedList'}/>
         </div>
-        {this.state.mode === 'Array' ? <ArrayInterface /> : null }
+        {this.state.mode === 'Array' ? <ArrayInterface /> : <ListInterface /> }
       </div>
     )
   }

@@ -1,7 +1,7 @@
 const defaultMatrix = [
   [null, null, 1, 1, null, null, null, 1, 1, 1, 1, 1, null, null, null],
   [1, 1, 1, 1, null, 1, 1, null, null, null, null, 1, null, null, null],
-  [1, null, null, null, null, null, null, 1, null, 1, null, 1, 1, 1, 1],
+  [1, null, null, null, null, null, 1, 1, null, 1, null, 1, 1, 1, 1],
   [1, 1, null, 1, 1, 1, 1, 1, 1, 1, 1, null, 1, 1, 1],
   [null, null, null, null, null, null, null, null, 1, 1, null, null, null, 1, 1],
   [1, null, null, null, null, null, null, null, null, null, null, null, 1, 1, 1],
@@ -9,20 +9,18 @@ const defaultMatrix = [
   [null, 1, null, null, null, null, null, null, null, null, null, null, null, null, 1],
 ]
 
+export default class ArrMatrix {
 
-class Matrix {
-
-  constructor(matVals=defaultMatrix) {
+  constructor(matVals=defaultMatrix, emptyVal=null) {
     this.matVals = matVals.map(arr => arr.slice())
     this.height = matVals.length
     this.width = matVals[0].length
-    this.emptyVal = null
+    this.emptyVal = emptyVal
     this.fullVal = 1
   }
 
   resetToDefault() {
     this.matVals = defaultMatrix.map(arr => arr.slice())
-    this.prevArrSize = 0
     this.prevStartPos = [0, 0]
   }
 
@@ -37,6 +35,11 @@ class Matrix {
   posIsAvailable(pos) {
     return (defaultMatrix[pos[0]][pos[1]] !== this.fullVal) ? true : false
   }
+
+  coordSame(posA, posB) {
+    return (posA[0] === posB[0] && posA[1] === posB[1]) ? true : false
+  }
+
 
   getNextEmptyCellFrom(startingPos) {
     for (let row = startingPos[0]; row < this.height; row++) {
@@ -73,8 +76,4 @@ class Matrix {
     }
     return longestFound
   }
-
-
 }
-
-export default Matrix

@@ -1,20 +1,19 @@
 import React, { Component } from 'react'
 import UserInput from './UserInput'
-import VisualMatrix from './VisualMatrix'
+import VisualMatrix from './matrix/VisualMatrix'
 import screenShake from '../helpers/screenShake'
 import playAudio from '../helpers/audioPlayer.js'
-import Matrix from '../helpers/Matrix.js'
-
-//TODO use lock to prevent users from adding when they shouldn't
+import ArrMatrix from '../helpers/ArrMatrix.js'
 
 class ArrayInterface extends Component {
   constructor() {
     super()
-    this.matrix = new Matrix()
+    this.matrix = new ArrMatrix()
     this.state = {
       matVals: this.matrix.matVals,
       currArr: [],
       currStartPos: [0, 0],
+      locked: false,
     }
     this.maxArrLength = this.matrix.longestContiguousFreeSpace()
   }
@@ -26,14 +25,13 @@ class ArrayInterface extends Component {
     this.setState({
       matVals: this.matrix.matVals,
       currArr: [],
-      currStartPos: [0, 0]
+      currStartPos: [0, 0],
+      locked: false
     })
     playAudio()
   }
 
-  getValidArr = (str) => {
-    return str.replace(/ /g, '').split('')
-  }
+  getValidArr = (str) => (str.replace(/[ ,/]/g, '').split(''))
 
   expensiveWrite = (pos, val, iterCount, shouldShake) => {
     setTimeout(() => {
@@ -55,16 +53,22 @@ class ArrayInterface extends Component {
     writeType(pos, val, iterCount, shouldShake)
   }
 
-  writeMatrix = (userArr, startPos, shakeAfter) => {
-    this.matrix.resetToDefault()
-    for (let col = startPos[1], idx = 0; col < userArr.length+startPos[1]; col++, idx++) {
-      let shouldShake = idx > shakeAfter
-      this.writeElement([startPos[0], col], userArr[idx], idx, shouldShake)
-    }
+  unlockAfter = (totalShakes) => { // hate using setTimeout for this -- better if I had a callback and reworked expensiveWrite.
+    setTimeout(() => {
+      this.setState({ locked: false })
+    }, totalShakes * 200)
   }
 
-  coordSame = (posA, posB) => {
-    return (posA[0] === posB[0] && posA[1] === posB[1]) ? true : false
+  writeMatrix = (userArr, startPos, shakeAfter) => {
+    let maxShakes = 0
+    this.matrix.resetToDefault() // this could be done much more efficiently
+    for (let col = startPos[1], idx = 0; col < userArr.length+startPos[1]; col++, idx++) {
+      let shouldShake = (idx > shakeAfter)
+      if (shouldShake)
+        maxShakes = idx
+      this.writeElement([startPos[0], col], userArr[idx], idx, shouldShake)
+    }
+    this.unlockAfter(maxShakes)
   }
 
   arrEquals = (arrA, arrB) => {
@@ -76,7 +80,6 @@ class ArrayInterface extends Component {
     return true
   }
 
-  // Implement a lock!
   updateMatrix = (arr) => {
     if (arr.length === 0) {
       if (this.state.currStartPos !== 0)
@@ -84,11 +87,8 @@ class ArrayInterface extends Component {
       return
     }
     const difference = arr.length - this.state.currArr.length
-    console.log(this.state.currStartPos, arr.length)
     const startPos = this.matrix.getStartPos(arr.length, this.state.currStartPos)
-    console.log(startPos)
-    const shakeAfter = this.coordSame(startPos, this.state.currStartPos) ? (arr.length - difference) : -1
-    // instead of reverting to default could keep track of what was written and erase it only instead
+    const shakeAfter = this.matrix.coordSame(startPos, this.state.currStartPos) ? (arr.length - difference) : -1
     this.writeMatrix(arr, startPos, shakeAfter)
     this.setState({
       currLength: arr.length,
@@ -101,16 +101,17 @@ class ArrayInterface extends Component {
 
   handleChange = (e) => {
     const sanitizedArr = this.getValidArr(e.target.value)
-    if (this.updateRequired(sanitizedArr))
+    if (this.updateRequired(sanitizedArr)) {
+      this.setState({locked: true})
       this.updateMatrix(sanitizedArr)
+    }
   }
 
   render() {
     return (
       <div>
-        {(this.state.currLength > this.maxArrSize ) ? <div style={{color: '#FF0000', width: '100%', margin: '0 auto', position: 'absolute', top: '7%'}}>Array Too Large!</div> : null}
         <div style={{height: '15%', width: '100%', margin: '0 auto', top: '10%', position: 'absolute'}}>
-          <UserInput handleChange={this.handleChange} val={this.state.currArr.join(' ')}/>
+          <UserInput handleChange={this.handleChange} val={this.state.currArr.join(', ')} locked={this.state.locked} />
         </div>
         <div ref={(container) => this.container = container} style={{height: '80%', minWidth: '600px', width: '100%', margin: '0 auto', top: '25%', position: 'absolute'}}>
           <VisualMatrix matVals={this.matrix.matVals} parentStruc={'Array'}/>
